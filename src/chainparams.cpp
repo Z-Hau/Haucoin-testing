@@ -15,6 +15,8 @@
 
 #include <chainparamsseeds.h>
 
+#include <openga.hpp>
+
 static CBlock CreateGenesisBlock(const char* pszTimestamp, const CScript& genesisOutputScript, uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CAmount& genesisReward)
 {
     CMutableTransaction txNew;
@@ -34,6 +36,7 @@ static CBlock CreateGenesisBlock(const char* pszTimestamp, const CScript& genesi
     genesis.hashPrevBlock.SetNull();
     genesis.hashMerkleRoot = BlockMerkleRoot(genesis);
     return genesis;
+    
 }
 
 /**
@@ -120,6 +123,9 @@ public:
         nDefaultPort = 9333;
         nPruneAfterHeight = 100000;
 
+
+        runGA(); 
+        
         genesis = CreateGenesisBlock(1552533118, 554031, 0x1e0ffff0, 1, 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
         assert(consensus.hashGenesisBlock == uint256S("0x000001e41add40a83c07d1282a695836e0a10e85b92abbc9551d349c2c879e01"));
