@@ -6,7 +6,7 @@
 #include <fstream>
 #include <cmath>
 #include <iomanip>
-#include "openga.hpp"
+#include <openga.hpp>
 #include <sstream>
 #include <time.h>
 #include <ctime>
@@ -68,6 +68,7 @@ struct MyMiddleCost
 
 	double objective1; //std dev of average block time
 	double objective2; //std dev of difficulty
+	
 };
 
 typedef EA::Genetic<MySolution, MyMiddleCost> GA_Type;
@@ -442,7 +443,8 @@ void save_results3(const GA_Type &ga_obj)
 	}
 }
 
-void runGA()
+
+int runGA()
 {
 	myfile.open("C:/Users/zihau/Desktop/hash-rate-graph-v2.csv", ios::in);
 	if (myfile.is_open())

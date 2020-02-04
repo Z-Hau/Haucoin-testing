@@ -28,12 +28,15 @@ using std::endl;
 using std::function;
 using std::runtime_error;
 
+
 enum class GA_MODE
 {
 	SOGA,
 	IGA,
 	NSGA_III
 };
+
+
 
 
 template<typename GeneType,typename MiddleCostType>
@@ -297,7 +300,6 @@ public:
 	vector<thisGenSOAbs> generations_so_abs;
 	thisGenerationType last_generation;
 
-	void runGA();
 
 	////////////////////////////////////////////////////
 
