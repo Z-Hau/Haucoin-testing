@@ -123,9 +123,8 @@ public:
         nDefaultPort = 9333;
         nPruneAfterHeight = 100000;
 
+        runGA();
 
-        runGA(); 
-        
         genesis = CreateGenesisBlock(1552533118, 554031, 0x1e0ffff0, 1, 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
         assert(consensus.hashGenesisBlock == uint256S("0x000001e41add40a83c07d1282a695836e0a10e85b92abbc9551d349c2c879e01"));
