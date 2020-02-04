@@ -299,6 +299,7 @@ public:
 	function<double(int,const function<double(void)> &rnd01)> get_shrink_scale;
 	vector<thisGenSOAbs> generations_so_abs;
 	thisGenerationType last_generation;
+	
 
 
 	////////////////////////////////////////////////////

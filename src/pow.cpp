@@ -52,6 +52,7 @@ long STDEV_OF_MINING_POWER = 100000 ;
 long AVERAGE_MINING_POWER = 400000 ;
 
 
+
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params& params)
 {
     assert(pindexLast != nullptr);
@@ -74,9 +75,8 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
                 while (pindex->pprev && pindex->nHeight % params.DifficultyAdjustmentInterval() != 0 && pindex->nBits == nProofOfWorkLimit)
                     pindex = pindex->pprev;
                 return pindex->nBits;
-                
             }
-        
+        }
         return pindexLast->nBits;
     }
 
@@ -85,10 +85,11 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     assert(nHeightFirst >= 0);
     const CBlockIndex* pindexFirst = pindexLast->GetAncestor(nHeightFirst);
     assert(pindexFirst);
-    runGA();
 
+    runGA();
     return CalculateNextWorkRequired(pindexLast, pindexFirst->GetBlockTime(), params);
 }
+
 
 unsigned int CalculateNextWorkRequired(const CBlockIndex* pindexLast, int64_t nFirstBlockTime, const Consensus::Params& params)
 {
