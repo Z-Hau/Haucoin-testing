@@ -57,6 +57,8 @@ struct MySolution
 			+ ", difficultyInterval:" + std::to_string(difficultyInterval)
 			+ "}";
 	}
+
+	
 };
 
 struct MyMiddleCost

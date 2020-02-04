@@ -297,6 +297,8 @@ public:
 	vector<thisGenSOAbs> generations_so_abs;
 	thisGenerationType last_generation;
 
+	void runGA();
+
 	////////////////////////////////////////////////////
 
 	Genetic() :
@@ -373,10 +375,6 @@ public:
 	}
 
 
-	void runGA()
-	{
-		
-	}
 	void solve_init()
 	{
 		check_settings();
