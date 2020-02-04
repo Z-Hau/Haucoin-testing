@@ -35,6 +35,7 @@ enum class GA_MODE
 	NSGA_III
 };
 
+
 template<typename GeneType,typename MiddleCostType>
 struct ChromosomeType
 {
@@ -371,6 +372,11 @@ public:
 			throw runtime_error("Number of the reduced objective is zero");
 	}
 
+
+	void runGA()
+	{
+		
+	}
 	void solve_init()
 	{
 		check_settings();
