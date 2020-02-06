@@ -582,12 +582,12 @@ int runGA(Consensus::Params& params)
             //current_blockInterval = blockInterval;
             //difficultyInterval = global_difficultyInterval;
             //current_difficultyInterval = difficultyInterval;
-            cout << "New Difficulty interval = " << difficultyInterval << endl;
-            cout << "New block interval = " << blockInterval << endl;
+            //cout << "New Difficulty interval = " << difficultyInterval << endl;
+            //cout << "New block interval = " << blockInterval << endl;
             //nPowTargetTimespan = blockInterval * difficultyInterval;
         }
         output_file << std::fixed << std::setprecision(30);
-        output_file << global1_objective1 << "," << global_objective1 << "," << global1_objective2 << "," << global_objective2 << "," << blockInterval << "," << difficultyInterval << "\n";
+        //output_file << global1_objective1 << "," << global_objective1 << "," << global1_objective2 << "," << global_objective2 << "," << blockInterval << "," << difficultyInterval << "\n";
         cout << "Block height = " << global_counter_height << endl;
         cout << "-----------------" << endl;
         //difficultyCounter = 0;
