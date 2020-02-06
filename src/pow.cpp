@@ -524,6 +524,7 @@ int runGA(Consensus::Params& params)
 	output_file.open("C:/Users/zihau/Desktop/SDL2-2.0.9/SDLproject/SDLproject/intermediate_result.csv",ios::app);
 	output_file  << "Objective 1" << "," << "GA_Objective 1" << "," << "Objective 2" << "," << "GA_Objective 2" << "," << "blockInterval" << "," << "difficultyInterval"  << "\n";
 	bool testExpression = true;
+    cout << "IM EHRERERERERERE~~~~~~~~~~~" << endl;
 	while (testExpression)
 	{
         
@@ -576,26 +577,27 @@ int runGA(Consensus::Params& params)
         {
             cout << "Current Difficulty interval = " << params.nPowTargetSpacing << endl;
             cout << "Current Block interval = " << params.nPowTargetTimespan << endl;
-            blockInterval = global_blockInterval;
+            //blockInterval = global_blockInterval;
             params.nPowTargetSpacing = 1;
-            current_blockInterval = blockInterval;
-            difficultyInterval = global_difficultyInterval;
-            current_difficultyInterval = difficultyInterval;
+            //current_blockInterval = blockInterval;
+            //difficultyInterval = global_difficultyInterval;
+            //current_difficultyInterval = difficultyInterval;
             cout << "New Difficulty interval = " << difficultyInterval << endl;
             cout << "New block interval = " << blockInterval << endl;
-            nPowTargetTimespan = blockInterval * difficultyInterval;
+            //nPowTargetTimespan = blockInterval * difficultyInterval;
         }
         output_file << std::fixed << std::setprecision(30);
         output_file << global1_objective1 << "," << global_objective1 << "," << global1_objective2 << "," << global_objective2 << "," << blockInterval << "," << difficultyInterval << "\n";
         cout << "Block height = " << global_counter_height << endl;
         cout << "-----------------" << endl;
-        difficultyCounter = 0;
+        //difficultyCounter = 0;
 
 		//With GA
-		long double mean = total_sum / block_time2.size();
-		long double difficulty_mean = difficulty_sum / difficulty_history.size();
+		//long double mean = total_sum / block_time2.size();
+		//long double difficulty_mean = difficulty_sum / difficulty_history.size();
 		long double stdDev = 0;
 		long double difficulty_stdDev = 0;
+        /*
 		for (int i = 0; i < block_time2.size(); i++)
 		{
 			stdDev = stdDev + pow(block_time2[i] - mean, 2);
@@ -606,6 +608,7 @@ int runGA(Consensus::Params& params)
 		}
 		long double ga_objective1 = sqrt(stdDev / block_time2.size());
 		long double ga_objective2 = sqrt(difficulty_stdDev / difficulty_history.size());
+        
 
 		testExpression = false;
 		cout << "Block interval = " << blockInterval << endl;
@@ -636,6 +639,7 @@ int runGA(Consensus::Params& params)
 		output_file6 << std::fixed << std::setprecision(30);
 		output_file6 << ga_objective1 << "," << ga_objective2 << "\n";
 		output_file6.close();
+        */
 	}
 	
 	
