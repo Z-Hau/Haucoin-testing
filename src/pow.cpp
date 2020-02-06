@@ -61,6 +61,7 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     // Only change once per difficulty adjustment interval
     if ((pindexLast->nHeight+1) % params.DifficultyAdjustmentInterval() != 0)
     {
+       
         if (params.fPowAllowMinDifficultyBlocks)
         {
             // Special difficulty rule for testnet:
@@ -75,6 +76,7 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
                 while (pindex->pprev && pindex->nHeight % params.DifficultyAdjustmentInterval() != 0 && pindex->nBits == nProofOfWorkLimit)
                     pindex = pindex->pprev;
                 return pindex->nBits;
+                
             }
         }
         return pindexLast->nBits;
@@ -86,12 +88,11 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     const CBlockIndex* pindexFirst = pindexLast->GetAncestor(nHeightFirst);
     assert(pindexFirst);
 
-    runGA();
     return CalculateNextWorkRequired(pindexLast, pindexFirst->GetBlockTime(), params);
 }
 
 
-unsigned int CalculateNextWorkRequired(const CBlockIndex* pindexLast, int64_t nFirstBlockTime, const Consensus::Params& params)
+unsigned int CalculateNextWorkRequired(const CBlockIndex* pindexLast, int64_t nFirstBlockTime, Consensus::Params params)
 {
     if (params.fPowNoRetargeting)
         return pindexLast->nBits;
@@ -113,6 +114,8 @@ unsigned int CalculateNextWorkRequired(const CBlockIndex* pindexLast, int64_t nF
     if (bnNew > bnPowLimit)
         bnNew = bnPowLimit;
 
+    runGA(params);
+    params.nPowTargetSpacing = 121212;
     return bnNew.GetCompact();
 }
 
@@ -184,18 +187,6 @@ void init_genes1(MySolution& p, const std::function<double(void)> &rnd01)
 	//p.difficultyInterval = 40;
 }
 
-int genMiningPower()
-{
-	std::random_device rd;
-	std::mt19937 gen(rd());
-	std::uniform_real_distribution<> dis(0.0, 1.0);
-	double r = dis(gen);
-	long minValue = 1;
-	long mining_power = (r * STDEV_OF_MINING_POWER + AVERAGE_MINING_POWER);
-	return max(mining_power,minValue);
-}
-
-
 bool eval_solution(
 	const MySolution& p,
 	MyMiddleCost &c)
@@ -221,63 +212,51 @@ bool eval_solution(
 	random_device rd;
 	mt19937_64 eng(0327);
 	std::normal_distribution<double> distr(1000000000, 30000000); // define the range
-
-	////To calculate individual block time
-	for (int i = 0 ; i < (10000); i++)
+    for (int i = 0; i < (10000); i++)
 	{
-		double r = distr(eng);
-		if (r < 0)
-		{
-			r = r * (-1);
-		}
-		long long int individualBlockTime = old_difficulty * (pow(2, 32)) / r; //second
-		block_time.push_back(individualBlockTime);
-		difficulty_history.push_back(old_difficulty);
+        double r = distr(eng);
+        if (r < 0)
+        {
+            r = r * (-1);
+        }
+        long long int individualBlockTime = old_difficulty * (pow(2, 32)) / r; //second
+        block_time.push_back(individualBlockTime);
+        difficulty_history.push_back(old_difficulty);
 
-		//Sum all block time
-		total_sum = total_sum + (individualBlockTime);
-		difficulty_sum = difficulty_sum + (old_difficulty);
+        //Sum all block time
+        total_sum = total_sum + (individualBlockTime);
+        difficulty_sum = difficulty_sum + (old_difficulty);
+    
+	
+        //If is time to readjust difficulty
+        if (((i+1) % difficultyInterval) == 0)
+        {
+            unsigned int counter1 = 0;
+            unsigned int sum = 0;
+            int previousBlockHeight = i + 1 - difficultyInterval;
+            for (int a = previousBlockHeight; a < (previousBlockHeight + difficultyInterval); a++)
+            {
+                sum = sum + block_time[a];
+                counter1 = counter1 + 1;
+            }
 
-		//If is time to readjust difficulty
-		if (((i+1) % difficultyInterval) == 0)
-		{
-			unsigned int counter1 = 0;
-			unsigned int sum = 0;
-			int previousBlockHeight = i + 1 - difficultyInterval;
-			for (int a = previousBlockHeight; a < (previousBlockHeight + difficultyInterval); a++)
-			{
-				sum = sum + block_time[a];
-				counter1 = counter1 + 1;
-			}
+            //limit the adjustment
+            if (sum < nPowTargetTimespan / 4)
+                sum = nPowTargetTimespan / 4;
+            if (sum > nPowTargetTimespan * 4)
+                sum = nPowTargetTimespan * 4;
+            //calculate new difficulty
+            new_difficulty = old_difficulty * (nPowTargetTimespan / sum);
 
-			//limit the adjustment
-			if (sum < nPowTargetTimespan / 4)
-				sum = nPowTargetTimespan / 4;
-			if (sum > nPowTargetTimespan * 4)
-				sum = nPowTargetTimespan * 4;
-			//calculate new difficulty
-			new_difficulty = old_difficulty * (nPowTargetTimespan / sum);
+            if (new_difficulty < min_difficulty)
+            {
+                new_difficulty = min_difficulty;
+            }
+            old_difficulty = new_difficulty;
+        }
 
-			if (new_difficulty < min_difficulty)
-			{
-				new_difficulty = min_difficulty;
-			}
-			old_difficulty = new_difficulty;
+    }
 
-		}
-	}
-	//myfile.open("C:/Users/zihau/Desktop/wtf.csv", ios::out | ios::trunc);
-	//for (int i = 0; i < block_time.size(); i++)
-	//{
-	//	if (myfile.is_open())
-	//	{
-	//		myfile << (block_time[i]/60) << endl;
-	//	}
-
-	//
-	//file.close();
-	//Calculate standard deviation
-	//sum = sum * 100;
 	mean = total_sum / block_time.size();
 	difficulty_mean = difficulty_sum / difficulty_history.size();
 
@@ -536,247 +515,81 @@ void save_results3(const GA_Type &ga_obj)
 }
 
 
-int runGA()
+int runGA(Consensus::Params& params)
 {
-	myfile.open("C:/Users/zihau/Desktop/hash-rate-graph-v2.csv", ios::in);
-	if (myfile.is_open())
-	{
-		while (getline(myfile, line))
-		{
-			hashrate.push_back(stoll(line));
-		}
-	}
-	myfile.close();
-
 	EA::Chronometer timer;
 	timer.tic();
-
 
 	std::ofstream output_file;
 	output_file.open("C:/Users/zihau/Desktop/SDL2-2.0.9/SDLproject/SDLproject/intermediate_result.csv",ios::app);
 	output_file  << "Objective 1" << "," << "GA_Objective 1" << "," << "Objective 2" << "," << "GA_Objective 2" << "," << "blockInterval" << "," << "difficultyInterval"  << "\n";
 	bool testExpression = true;
-	genMiningPower();
 	while (testExpression)
 	{
-		int blockInterval = 600;
-		int difficultyInterval = 2016;
-		int difficultyCounter = 0;
-		current_blockInterval = blockInterval;
-		current_difficultyInterval = difficultyInterval;
-		long double nPowTargetTimespan = blockInterval * difficultyInterval;
-		long double new_difficulty = 1;
-		long double old_difficulty = 1;
-		//long double old_difficulty = 0.03;
-		long double min_difficulty = old_difficulty;
-		vector <long long int> block_time2;
-		vector <double> difficulty_history;
-		long long int total_sum = 0;
-		long double difficulty_sum = 0;
-		
-		int fixed_blockInterval = 600;
-		int fixed_difficultyInterval = 2016;
-		long double fixed_nPowTargetTimespan = fixed_blockInterval * fixed_difficultyInterval;
-		long double fixed_newDifficulty = 1;
-		long double fixed_oldDifficulty = 1;
-		long double fixed_minDifficulty = fixed_oldDifficulty;
-		vector <long long int> fixed_blockTime;
-		vector <long double> fixed_difficultyHistory;
-		long long int fixed_totalSum = 0;
-		long double fixed_Mean = 0, fixed_stdDev = 0;
-		long double fixed_difficultySum = 0;
-		long double fixed_difficultyMean = 0, fixed_difficultystdDev = 0;
-		unsigned int fixed_counter1 = 0;
-		long long int fixed_Sum = 0;
-		int fixed_previousBlockHeight = 0;
+        
+        current_blockInterval = params.nPowTargetSpacing;
+        current_difficultyInterval = params.nPowTargetTimespan;
+        
 
+        //For current parameters
+        GA_Type ga_obj1;
+        ga_obj1.problem_mode = EA::GA_MODE::NSGA_III;
+        ga_obj1.multi_threading = true;
+        ga_obj1.verbose = false;
+        ga_obj1.population = 2;
+        ga_obj1.generation_max = 1;
+        ga_obj1.calculate_MO_objectives = calculate_MO_objectives;
+        ga_obj1.init_genes = init_genes1;
+        ga_obj1.eval_solution = eval_solution1;
+        ga_obj1.mutate = mutate;
+        ga_obj1.crossover = crossover;
+        ga_obj1.MO_report_generation = MO_report_generation;
+        ga_obj1.best_stall_max = 1;
+        ga_obj1.elite_count = 1;
+        ga_obj1.crossover_fraction = 0.7;
+        ga_obj1.mutation_rate = 0.2;
+        ga_obj1.solve();
+        save_results3(ga_obj1);
 
-		std::random_device rd; // obtain a random number from hardware
-		std::mt19937 eng(0327); // seed the generator (1010)
-		std::normal_distribution<double> distr(1000000000, 30000000); // define the range
-		
-		////To calculate individual block time
-		for (int i = 0; i < 20160; i++)
-		{
-			global_counter_height = i;
-			
-			/*
-			std::normal_distribution<double> dist(0.0,1.0);
-			double wtf = dist(eng);
-			double lower_bound = 0;
-			double upper_bound = 1;
-			std::uniform_real_distribution<double> unif(lower_bound, upper_bound);
-			std::default_random_engine re;
-			double a_random_double = unif(re);
-			double p = 1.0 / 120000000000;
-			for (int i = 0; i < 10; i++)
-			{
-				double interval = (log(a_random_double) / log(1.0-p))/distr(eng);
-			}
-			*/
-
-			//set the random number
-			double r = distr(eng);
-			if (r < 0)
-			{
-				r = r * (-1);
-			}
-
-			//calculate block time (With GA)
-			long long int individualBlockTime = old_difficulty * (pow(2, 32)) / r; //second
- 			block_time2.push_back(individualBlockTime);
-			difficulty_history.push_back(old_difficulty);
-			difficultyCounter = difficultyCounter + 1;
-
-			//calculate block time (Without GA)
-			long long int fixed_individualBlockTime = fixed_oldDifficulty * (pow(2, 32)) / r;
-			fixed_blockTime.push_back(fixed_individualBlockTime);
-			fixed_difficultyHistory.push_back(fixed_oldDifficulty);
-
-
-			//Sum all block time & difficulty (with GA)
-			total_sum = total_sum + individualBlockTime;
-			difficulty_sum = difficulty_sum + old_difficulty;
-
-			//Sum all block time & difficulty (without GA)
-			fixed_totalSum = fixed_totalSum + fixed_individualBlockTime;
-			fixed_difficultySum = fixed_difficultySum + fixed_oldDifficulty;
-
-			
-			//Without GA
-			if (((i + 1) % fixed_difficultyInterval) == 0)
-			{
-				unsigned int fixed_counter1 = 0;
-				long long int fixed_Sum = 0;
-
-				int fixed_previousBlockHeight = i + 1 - fixed_difficultyInterval;
-				for (int a = fixed_previousBlockHeight; a < (fixed_previousBlockHeight + fixed_difficultyInterval); a++)
-				{
-					fixed_Sum = fixed_Sum + fixed_blockTime[a];
-					fixed_counter1 = fixed_counter1 + 1;
-				}
-				
-				//limit the adjustment
-				if (fixed_Sum < fixed_nPowTargetTimespan / 4)
-					fixed_Sum = fixed_nPowTargetTimespan / 4;
-				if (fixed_Sum > fixed_nPowTargetTimespan * 4)
-					fixed_Sum = fixed_nPowTargetTimespan * 4;
-				//calculate new difficulty
-				fixed_newDifficulty = fixed_oldDifficulty * (fixed_nPowTargetTimespan / fixed_Sum);
-
-				if (fixed_newDifficulty < fixed_minDifficulty)
-				{
-					fixed_newDifficulty = fixed_minDifficulty;
-				}
-				fixed_oldDifficulty = fixed_newDifficulty;
-
-			}
-
-
-			//If is time to readjust difficulty
-			//With GA
-			if (((difficultyCounter) % difficultyInterval) == 0)
-			{
-				
-				unsigned int counter1 = 0;
-				long long int sum = 0;
-				int previousBlockHeight = i + 1 - difficultyInterval;
-				for (int a = previousBlockHeight; a < (previousBlockHeight + difficultyCounter); a++)
-				{
-					sum = sum + block_time2[a];
-					counter1 = counter1 + 1;
-				}
-
-				//limit the adjustment
-				if (sum < nPowTargetTimespan / 4)
-					sum = nPowTargetTimespan / 4;
-				if (sum > nPowTargetTimespan * 4)
-					sum = nPowTargetTimespan * 4;
-				//calculate new difficulty
-				new_difficulty = old_difficulty * (nPowTargetTimespan / sum);
-
-				if (new_difficulty < min_difficulty)
-				{
-					new_difficulty = min_difficulty;
-				}
-				old_difficulty = new_difficulty;
-				global_difficulty = old_difficulty;
-				
-				// To evaluate how the current parameters perform
-				GA_Type ga_obj1;
-				ga_obj1.problem_mode = EA::GA_MODE::NSGA_III;
-				ga_obj1.multi_threading = true;
-				ga_obj1.verbose = false;
-				ga_obj1.population = 2;
-				ga_obj1.generation_max = 1;
-				ga_obj1.calculate_MO_objectives = calculate_MO_objectives;
-				ga_obj1.init_genes = init_genes1;
-				ga_obj1.eval_solution = eval_solution1;
-				ga_obj1.mutate = mutate;
-				ga_obj1.crossover = crossover;
-				ga_obj1.MO_report_generation = MO_report_generation;
-				ga_obj1.best_stall_max = 1;
-				ga_obj1.elite_count = 1;
-				ga_obj1.crossover_fraction = 0.7;
-				ga_obj1.mutation_rate = 0.2;
-				ga_obj1.solve();
-				save_results3(ga_obj1);
-
-				//To evalute the other set of parameters
-				GA_Type ga_obj;
-				ga_obj.problem_mode = EA::GA_MODE::NSGA_III;
-				ga_obj.multi_threading = true;
-				ga_obj.verbose = false;
-				ga_obj.population = 100; 
-				ga_obj.generation_max = 10;
-				ga_obj.calculate_MO_objectives = calculate_MO_objectives;
-				ga_obj.init_genes = init_genes;
-				ga_obj.eval_solution = eval_solution;
-				ga_obj.mutate = mutate;
-				ga_obj.crossover = crossover;
-				ga_obj.MO_report_generation = MO_report_generation;
-				ga_obj.best_stall_max = 10;
-				ga_obj.elite_count = 10;
-				ga_obj.crossover_fraction = 0.7;
-				ga_obj.mutation_rate = 0.2;
-				ga_obj.solve();
-				save_results2(ga_obj);
-				
-				//If objective from GA is better than the current
-				if (global_objective1 < global1_objective1 && global_objective2 < global1_objective2)
-				{
-					cout << "Current Difficulty interval = " << difficultyInterval << endl;
-					cout << "Current Block interval = " << blockInterval << endl;
-					blockInterval = global_blockInterval;
-					current_blockInterval = blockInterval;
-					difficultyInterval = global_difficultyInterval;
-					current_difficultyInterval = difficultyInterval;
-					cout << "New Difficulty interval = " << difficultyInterval << endl;
-					cout << "New block interval = " << blockInterval << endl;
-					nPowTargetTimespan = blockInterval * difficultyInterval;
-				}
-				output_file << std::fixed << std::setprecision(30);
-				output_file << global1_objective1 << "," << global_objective1 << "," << global1_objective2 << "," << global_objective2 << "," << blockInterval << "," << difficultyInterval << "\n";
-				cout << "Block height = " << global_counter_height << endl;
-				cout << "-----------------" << endl;
-				difficultyCounter = 0;
-
-			}
-			
-		}
-		//Without GA
-		fixed_Mean = fixed_totalSum / fixed_blockTime.size();
-		fixed_difficultyMean = fixed_difficultySum / fixed_difficultyHistory.size();
-		for (int a = 0; a < fixed_blockTime.size(); a++)
-		{
-			fixed_stdDev = fixed_stdDev + pow(fixed_blockTime[a] - fixed_Mean, 2);
-		}
-		for (int a = 0; a < fixed_difficultyHistory.size(); a++)
-		{
-			fixed_difficultystdDev = fixed_difficultystdDev + pow(fixed_difficultyHistory[a] - fixed_difficultyMean, 2);
-		}
-		double fixed_objective1 = sqrt(fixed_stdDev / fixed_blockTime.size());
-		double fixed_objective2 = sqrt(fixed_difficultystdDev / fixed_difficultyHistory.size());
+        //To evalute the other set of parameters
+        GA_Type ga_obj;
+        ga_obj.problem_mode = EA::GA_MODE::NSGA_III;
+        ga_obj.multi_threading = true;
+        ga_obj.verbose = false;
+        ga_obj.population = 100; 
+        ga_obj.generation_max = 10;
+        ga_obj.calculate_MO_objectives = calculate_MO_objectives;
+        ga_obj.init_genes = init_genes;
+        ga_obj.eval_solution = eval_solution;
+        ga_obj.mutate = mutate;
+        ga_obj.crossover = crossover;
+        ga_obj.MO_report_generation = MO_report_generation;
+        ga_obj.best_stall_max = 10;
+        ga_obj.elite_count = 10;
+        ga_obj.crossover_fraction = 0.7;
+        ga_obj.mutation_rate = 0.2;
+        ga_obj.solve();
+        save_results2(ga_obj);
+            
+        //If objective from GA is better than the current
+        if (global_objective1 < global1_objective1 && global_objective2 < global1_objective2)
+        {
+            cout << "Current Difficulty interval = " << params.nPowTargetSpacing << endl;
+            cout << "Current Block interval = " << params.nPowTargetTimespan << endl;
+            blockInterval = global_blockInterval;
+            params.nPowTargetSpacing = 1;
+            current_blockInterval = blockInterval;
+            difficultyInterval = global_difficultyInterval;
+            current_difficultyInterval = difficultyInterval;
+            cout << "New Difficulty interval = " << difficultyInterval << endl;
+            cout << "New block interval = " << blockInterval << endl;
+            nPowTargetTimespan = blockInterval * difficultyInterval;
+        }
+        output_file << std::fixed << std::setprecision(30);
+        output_file << global1_objective1 << "," << global_objective1 << "," << global1_objective2 << "," << global_objective2 << "," << blockInterval << "," << difficultyInterval << "\n";
+        cout << "Block height = " << global_counter_height << endl;
+        cout << "-----------------" << endl;
+        difficultyCounter = 0;
 
 		//With GA
 		long double mean = total_sum / block_time2.size();
@@ -799,14 +612,6 @@ int runGA()
 		cout << "Difficulty interval = " << difficultyInterval << endl;
 		output_file.close();
 
-
-		std::ofstream output_file1;
-		output_file1.open("C:/Users/zihau/Desktop/SDL2-2.0.9/SDLproject/SDLproject/fixed_results.csv", ios::app);
-		//output_file1 << "Objective 1" << "," << "Objective 2" << ","<< "\n";
-		output_file1 << std::fixed << std::setprecision(30);
-		output_file1 << fixed_objective1 << "," << fixed_objective2 << "\n";
-		output_file1.close();
-
 		std::ofstream output_file2;
 		output_file2.open("C:/Users/zihau/Desktop/SDL2-2.0.9/SDLproject/SDLproject/block_time.csv");
 		output_file2 << "Block number" << "," << "Time" << "," << "\n";
@@ -814,15 +619,6 @@ int runGA()
 		for (int i = 0; i < block_time2.size(); i++)
 		{
 			output_file2 << i << "," << block_time2[i] << "\n";
-		}
-		
-		std::ofstream output_file3;
-		output_file3.open("C:/Users/zihau/Desktop/SDL2-2.0.9/SDLproject/SDLproject/fixed_para_block_time.csv");
-		output_file3 << "Block number" << "," << "Time" << "," << "\n";
-		output_file3 << std::fixed << std::setprecision(30);
-		for (int i = 0; i < block_time2.size(); i++)
-		{
-			output_file3 << i << "," << fixed_blockTime[i] << "\n";
 		}
 
 		std::ofstream output_file4;
@@ -833,16 +629,6 @@ int runGA()
 		{
 			output_file4 << i << "," << difficulty_history[i] << "\n";
 		}
-
-		std::ofstream output_file5;
-		output_file5.open("C:/Users/zihau/Desktop/SDL2-2.0.9/SDLproject/SDLproject/fixed_para_difficulty_history.csv");
-		output_file5 << "Block number" << "," << "Difficulty" << "," << "\n";
-		output_file5 << std::fixed << std::setprecision(30);
-		for (int i = 0; i < fixed_difficultyHistory.size(); i++)
-		{
-			output_file5 << i << "," << fixed_difficultyHistory[i] << "\n";
-		}
-
 
 		std::ofstream output_file6;
 		output_file6.open("C:/Users/zihau/Desktop/SDL2-2.0.9/SDLproject/SDLproject/results.csv", ios::app);
